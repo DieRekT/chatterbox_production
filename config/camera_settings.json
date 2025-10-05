@@ -1,0 +1,12 @@
+{
+  "cam0": {
+    "device": "/dev/video0",
+    "resolution": "1280x720",
+    "fps": 30
+  },
+  "cam1": {
+    "device": "/dev/video2",
+    "resolution": "1280x720",
+    "fps": 30
+  }
+}

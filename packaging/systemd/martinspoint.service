@@ -1,0 +1,18 @@
+[Unit]
+Description=Martins Point Security Desktop Console
+After=network-online.target graphical.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/martinspoint
+ExecStart=/opt/martinspoint/run_idview.sh
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=QT_QPA_PLATFORM=xcb
+Environment=MPS_RECORDINGS_DIR=/opt/martinspoint/recordings
+Environment=MPS_CONFIG=/opt/martinspoint/config/camera_settings.json
+
+[Install]
+WantedBy=default.target
