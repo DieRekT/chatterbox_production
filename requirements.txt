@@ -1,0 +1,10 @@
+PyQt6==6.7.1
+opencv-python==4.10.0.84
+numpy==2.1.2
+psutil==6.0.0
+PyYAML==6.0.2
+uvloop==0.20.0; platform_system == "Linux"
+loguru==0.7.2
+ultralytics==8.3.40 # optional, AI analytics
+onnxruntime==1.19.2 # optional, CPU inference
+pydantic==2.9.2
