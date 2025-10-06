@@ -1,5 +1,5 @@
 [Unit]
-Description=Martins Point Security Desktop Console
+Description=Martins Point Security
 After=network-online.target
 Wants=network-online.target
 

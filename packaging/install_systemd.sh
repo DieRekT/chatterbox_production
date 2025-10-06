@@ -12,15 +12,7 @@ fi
 mkdir -p "$APP_DIR"
 rsync -a --delete ./ "$APP_DIR"/
 
-cd "$APP_DIR"
-python3 -m venv idview_env
-source idview_env/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-
-install -m 644 packaging/systemd/martinspoint.service /etc/systemd/system/$SERVICE_NAME
+install -m 644 packaging/martinspoint.service /etc/systemd/system/$SERVICE_NAME
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME"
-systemctl restart "$SERVICE_NAME"
-
-echo "Installed and started $SERVICE_NAME"
+echo "Installed $SERVICE_NAME. Start with: systemctl start $SERVICE_NAME"

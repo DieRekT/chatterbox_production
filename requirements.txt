@@ -8,3 +8,4 @@ loguru==0.7.2
 ultralytics==8.3.40 # optional, AI analytics
 onnxruntime==1.19.2 # optional, CPU inference
 pydantic==2.9.2
+watchdog>=4.0

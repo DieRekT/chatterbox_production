@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
@@ -10,7 +11,12 @@ from loguru import logger
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 from mps.ui.camera_tile import CameraTile
-from mps.config import get_config_path
+from mps.settings_loader import resolve_settings
+from mps.settings_schema import Settings
+try:
+    from mps.settings_ui import SettingsDialog  # PyQt settings dialog
+except Exception:
+    SettingsDialog = None  # type: ignore
 
 
 @dataclass
@@ -23,7 +29,11 @@ class CameraConfig:
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, cameras: Dict[str, CameraConfig]):
         super().__init__()
-        self.setWindowTitle("Martins Point Security v2.1")
+        try:
+            s = resolve_settings()
+            self.setWindowTitle(f"{s.app.name} {s.app.version}")
+        except Exception:
+            self.setWindowTitle("Martins Point Security")
         self.resize(1280, 800)
 
         central = QtWidgets.QWidget()
@@ -40,6 +50,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         layout.addWidget(self.tile0, 0, 0)
         layout.addWidget(self.tile1, 0, 1)
+
+        # Menubar
+        menubar = self.menuBar()
+        settings_menu = menubar.addMenu("Settings")
+        if SettingsDialog is not None:
+            act_open = settings_menu.addAction("Open Settings…")
+            act_open.triggered.connect(self._open_settings)
 
         # Status bar entries
         self.storage_label = QtWidgets.QLabel("Storage: ...")
@@ -61,21 +78,22 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             logger.debug(f"storage update failed: {e}")
 
+    def _open_settings(self) -> None:
+        if SettingsDialog is None:
+            return
+        dlg = SettingsDialog(self)
+        dlg.exec()
 
-def load_config(path: Path) -> Dict[str, CameraConfig]:
-    if not path.exists():
-        logger.warning(f"Config not found at {path}, using defaults")
-        return {
-            "cam0": CameraConfig("/dev/video0", "1280x720", 30),
-            "cam1": CameraConfig("/dev/video2", "1280x720", 30),
-        }
-    data = json.loads(path.read_text())
+
+def _cams_from_settings(s: Settings) -> Dict[str, CameraConfig]:
     out: Dict[str, CameraConfig] = {}
-    for key, entry in data.items():
+    for key, cam in s.video.cams.items():
+        if not cam.enabled:
+            continue
         out[key] = CameraConfig(
-            device=entry.get("device", "/dev/video0"),
-            resolution=entry.get("resolution", "1280x720"),
-            fps=int(entry.get("fps", 30)),
+            device=cam.device,
+            resolution=cam.resolution,
+            fps=int(cam.fps),
         )
     return out
 
@@ -83,7 +101,8 @@ def load_config(path: Path) -> Dict[str, CameraConfig]:
 def run_app() -> None:
     app = QtWidgets.QApplication([])
 
-    config = load_config(get_config_path())
+    s = resolve_settings()
+    config = _cams_from_settings(s)
     win = MainWindow(config)
     win.show()
 

@@ -13,6 +13,7 @@ from mps.motion.detector import MotionDetector, MotionSettings
 from mps.recording.recorder import MotionTriggeredRecorder, RecordingSettings
 from mps.analytics.ai import AiAnalyzer, AiSettings
 from mps.config import get_recordings_dir
+from mps.settings_loader import resolve_settings
 
 
 @dataclass
@@ -37,21 +38,73 @@ class CameraWorker(QtCore.QThread):
             logger.warning(f"{self.name}: no camera configured")
             return
         source = self.cfg.device
-        cap = cv2.VideoCapture(source)
-        if not cap.isOpened():
-            logger.error(f"{self.name}: failed to open {source}")
-            return
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        if fps <= 1:
-            fps = 30.0
-        motion = MotionDetector(MotionSettings())
-        recorder = MotionTriggeredRecorder(get_recordings_dir(), self.name, RecordingSettings(), fps_hint=fps)
-        ai = AiAnalyzer(AiSettings())
+
+        # Settings-driven components (persist across reconnects)
+        s = resolve_settings()
+        motion = MotionDetector(MotionSettings(
+            sensitivity=int(max(1, min(255, s.motion.sensitivity * 255))),
+            min_area=s.motion.min_area_px,
+        ))
+        recorder = MotionTriggeredRecorder(get_recordings_dir(), self.name, RecordingSettings(
+            enabled=s.motion.enabled,
+            prebuffer_seconds=float(s.motion.prebuffer_s),
+            postbuffer_seconds=float(s.motion.postbuffer_s),
+        ), fps_hint=30.0)
+        ai = AiAnalyzer(AiSettings(
+            enabled=s.analytics.yolo_enabled,
+            confidence=float(s.analytics.confidence),
+        ))
+
+        cap: Optional[cv2.VideoCapture] = None
+        backoff_ms = 200
+        max_backoff_ms = 5000
+        consecutive_fail_reads = 0
+        fail_threshold = 30  # ~1s at 30fps
+
         while self._running:
+            # Ensure capture is open; try to reconnect if needed
+            if cap is None or not cap.isOpened():
+                # Close any stale handle
+                if cap is not None:
+                    try:
+                        cap.release()
+                    except Exception:
+                        pass
+                cap = cv2.VideoCapture(source)
+                if cap.isOpened():
+                    # Update FPS & motion background on reconnect
+                    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                    if fps <= 1:
+                        fps = 30.0
+                    recorder.set_fps(float(fps))
+                    motion.reset()
+                    consecutive_fail_reads = 0
+                    backoff_ms = 200
+                    logger.info(f"{self.name}: camera opened (fps={fps})")
+                else:
+                    logger.warning(f"{self.name}: camera unavailable, retrying in {backoff_ms}ms")
+                    self.msleep(backoff_ms)
+                    backoff_ms = min(max_backoff_ms, backoff_ms * 2)
+                    continue
+
             ok, frame = cap.read()
             if not ok:
+                consecutive_fail_reads += 1
+                if consecutive_fail_reads >= fail_threshold:
+                    logger.warning(f"{self.name}: read failures, attempting to reconnect camera")
+                    try:
+                        cap.release()
+                    except Exception:
+                        pass
+                    cap = None
+                    consecutive_fail_reads = 0
+                    # short pause before reconnect attempts
+                    self.msleep(200)
+                    continue
                 self.msleep(10)
                 continue
+
+            consecutive_fail_reads = 0
             # motion detection
             mres = motion.process(frame)
             self.motion.emit(mres.motion_detected)
@@ -60,7 +113,12 @@ class CameraWorker(QtCore.QThread):
             _ = ai.analyze(frame)
 
             self.frame_ready.emit(frame)
-        cap.release()
+
+        if cap is not None:
+            try:
+                cap.release()
+            except Exception:
+                pass
         recorder.stop()
 
     def stop(self) -> None:
