@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Activate venv if present
-if [[ -n "${VIRTUAL_ENV:-}" ]]; then
-  :
-elif [[ -d "idview_env" ]]; then
-  # shellcheck disable=SC1091
-  source idview_env/bin/activate
-fi
+python3 -m venv idview_env || true
+# shellcheck disable=SC1091
+source idview_env/bin/activate
+pip install -U pip wheel
+pip install -r requirements.txt
 
 export PYTHONUNBUFFERED=1
 export QT_QPA_PLATFORM=xcb
-
-python3 -m mps.main "$@"
+python -c "from mps.main import main; raise SystemExit(main())" "$@"

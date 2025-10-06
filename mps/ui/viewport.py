@@ -7,6 +7,9 @@ import cv2
 import numpy as np
 from PyQt6 import QtCore, QtGui, QtWidgets
 from mps.config import get_recordings_dir
+from mps.settings_loader import resolve_settings
+from pathlib import Path
+import os
 
 
 class ViewportWidget(QtWidgets.QWidget):
@@ -39,7 +42,12 @@ class ViewportWidget(QtWidgets.QWidget):
         if self._frame is None:
             return
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        outdir = get_recordings_dir()
+        # Prefer snapshots_dir from unified settings; fallback to recordings
+        try:
+            s = resolve_settings()
+            outdir = Path(os.path.expanduser(s.storage.snapshots_dir))
+        except Exception:
+            outdir = get_recordings_dir()
         outdir.mkdir(parents=True, exist_ok=True)
         path = outdir / f"{name}_{ts}.jpg"
         cv2.imwrite(str(path), self._frame)

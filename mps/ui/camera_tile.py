@@ -13,6 +13,7 @@ from mps.motion.detector import MotionDetector, MotionSettings
 from mps.recording.recorder import MotionTriggeredRecorder, RecordingSettings
 from mps.analytics.ai import AiAnalyzer, AiSettings
 from mps.config import get_recordings_dir
+from mps.settings_loader import resolve_settings
 
 
 @dataclass
@@ -44,9 +45,20 @@ class CameraWorker(QtCore.QThread):
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
         if fps <= 1:
             fps = 30.0
-        motion = MotionDetector(MotionSettings())
-        recorder = MotionTriggeredRecorder(get_recordings_dir(), self.name, RecordingSettings(), fps_hint=fps)
-        ai = AiAnalyzer(AiSettings())
+        s = resolve_settings()
+        motion = MotionDetector(MotionSettings(
+            sensitivity=int(max(1, min(255, s.motion.sensitivity * 255))),
+            min_area=s.motion.min_area_px,
+        ))
+        recorder = MotionTriggeredRecorder(get_recordings_dir(), self.name, RecordingSettings(
+            enabled=s.motion.enabled,
+            prebuffer_seconds=float(s.motion.prebuffer_s),
+            postbuffer_seconds=float(s.motion.postbuffer_s),
+        ), fps_hint=fps)
+        ai = AiAnalyzer(AiSettings(
+            enabled=s.analytics.yolo_enabled,
+            confidence=float(s.analytics.confidence),
+        ))
         while self._running:
             ok, frame = cap.read()
             if not ok:

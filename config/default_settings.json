@@ -1,0 +1,45 @@
+{
+  "app": {
+    "name": "Martins Point Security",
+    "version": "2.2.0",
+    "timezone": "Australia/Sydney",
+    "log_level": "INFO",
+    "ui_theme": "dark"
+  },
+  "storage": {
+    "recordings_dir": "~/.local/share/mps/recordings",
+    "snapshots_dir": "~/.local/share/mps/snapshots",
+    "max_days_to_keep": 14,
+    "free_space_min_gb": 5
+  },
+  "video": {
+    "cams": {
+      "cam0": { "device": "/dev/video0", "resolution": "1280x720", "fps": 30, "rotate_deg": 0, "enabled": true },
+      "cam1": { "device": "/dev/video2", "resolution": "1280x720", "fps": 30, "rotate_deg": 0, "enabled": false }
+    },
+    "letterbox": true,
+    "backend": "opencv",
+    "rtsp_timeout_s": 6
+  },
+  "motion": {
+    "enabled": true,
+    "sensitivity": 0.55,
+    "min_area_px": 900,
+    "prebuffer_s": 2.0,
+    "postbuffer_s": 4.0,
+    "cooldown_s": 2.0
+  },
+  "analytics": {
+    "yolo_enabled": false,
+    "model": "yolov8n.pt",
+    "confidence": 0.35
+  },
+  "telemetry": {
+    "enabled": false
+  },
+  "flags": {
+    "experimental": false,
+    "dev_tools": false,
+    "low_power_mode": false
+  }
+}

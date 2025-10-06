@@ -1,4 +1,4 @@
-## 🛡️ Martins Point Security v2.1
+## 🛡️ Martins Point Security v2.2
 
 Professional Desktop Security Console with Advanced Motion Detection & AI Analytics
 
@@ -22,18 +22,15 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Edit `config/camera_settings.json`:
+Unified settings with layered config:
 
-```json
-{
-  "cam0": { "device": "/dev/video0", "resolution": "1280x720", "fps": 30 },
-  "cam1": { "device": "/dev/video2", "resolution": "1280x720", "fps": 30 }
-}
+```
+defaults (config/default_settings.json)
+→ user (~/.config/mps/settings.json)
+→ env overrides (MPS_RECORDINGS_DIR, MPS_CONFIG)
 ```
 
-Environment variables:
-- `MPS_CONFIG`: path to camera JSON
-- `MPS_RECORDINGS_DIR`: directory for snapshots/recordings
+Open the Settings dialog from the app menu (Settings → Open Settings…) to import/export/reset.
 
 ## Systemd (optional)
 
@@ -43,7 +40,7 @@ sudo systemctl status martinspoint.service
 journalctl -u martinspoint.service -f
 ```
 
-The service sets `MPS_CONFIG` and `MPS_RECORDINGS_DIR` to `/opt/martinspoint/...`.
+See `scripts/print_settings_tree.py` to inspect the resolved tree.
 
 ## Notes
 - AI analytics requires `ultralytics` and weights; it is optional.
